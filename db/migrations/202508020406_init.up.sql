@@ -126,8 +126,7 @@ CREATE TABLE  IF NOT EXISTS users (
     );
 
 INSERT INTO users (name, password, role)
-    VALUES ('admin', '$2a$10$mNnKCThvzD9uUtQLu8C0UO7WyLok64xlv8XfOLqnm5oBBaq3HxAbG', 'ADMIN')
-    ON CONFLICT (name) DO NOTHING;
+    VALUES ('admin', '$2a$10$mNnKCThvzD9uUtQLu8C0UO7WyLok64xlv8XfOLqnm5oBBaq3HxAbG', 'ADMIN');
 
     CREATE TABLE  IF NOT EXISTS types (
     "id" bigserial primary key,
@@ -233,7 +232,7 @@ CREATE TABLE IF NOT EXISTS search_histories (
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
 
-    CONSTRAINT client_id_review_fk FOREIGN KEY ("client_id") REFERENCES clients("id")
+    CONSTRAINT client_id_search_histories_fk FOREIGN KEY ("client_id") REFERENCES clients("id")
   );
 
   CREATE TABLE IF NOT EXISTS businesses_tables (

@@ -3,10 +3,8 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"restaurants/internal/config"
-	"restaurants/internal/migrations"
 	repeatable "restaurants/pkg/utils"
 	"time"
 
@@ -25,11 +23,11 @@ type Client interface {
 func NewClient(ctx context.Context, maxAttempts int, sc config.StorageConfig) (pool *pgxpool.Pool, err error) {
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", sc.Username, sc.Password, sc.Host, sc.Port, sc.Database)
 
-	err = migrations.RunMigrations("db/migrations", dsn)
-	if err != nil {
-		log.Fatalf("Migration failed: %v", err)
-	}
-	log.Println("Migrations completed successfully")
+	// err = migrations.RunMigrations("db/migrations", dsn)
+	// if err != nil {
+	// 	log.Fatalf("Migration failed: %v", err)
+	// }
+	// log.Println("Migrations completed successfully")
 	err = repeatable.DoWithTries(func() error {
 		cfg, err := pgxpool.ParseConfig(dsn)
 
