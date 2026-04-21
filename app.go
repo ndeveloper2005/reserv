@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,7 +39,8 @@ func main() {
 
 	fcmClient, err := fcm.NewFCMClient("./internal/config/serviceAccountKey.json")
 	if err != nil {
-		panic(fmt.Sprintf("FCM init error: %v", err))
+		//panic(fmt.Sprintf("FCM init error: %v", err))
+		fcmClient = nil
 	}
 
 	postgresSQLClient, err := startPostgresql(cfg, logger)
