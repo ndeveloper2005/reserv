@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -72,35 +71,35 @@ func startPostgresql(cfg *config.Config, _ *logging.Logger) (*pgxpool.Pool, erro
 	return postgresSQLClient, err
 }
 
-// func start(router *gin.Engine, cfg *config.Config) {
-// 	logger := logging.GetLogger()
-// 	logger.Info("start application")
-
-// 	router.StaticFS("/uploads", gin.Dir(cfg.PublicFilePath, false))
-// 	router.Static("/public", "./public")
-// 	err := router.Run("0.0.0.0:8081")
-// 	if err != nil {
-// 		return
-// 	}
-// }
 func start(router *gin.Engine, cfg *config.Config) {
 	logger := logging.GetLogger()
 	logger.Info("start application")
 
 	router.StaticFS("/uploads", gin.Dir(cfg.PublicFilePath, false))
 	router.Static("/public", "./public")
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	err := router.Run("0.0.0.0:" + port)
+	err := router.Run("0.0.0.0:8081")
 	if err != nil {
-		logger.Error("server start error: ", err)
 		return
 	}
 }
+// func start(router *gin.Engine, cfg *config.Config) {
+// 	logger := logging.GetLogger()
+// 	logger.Info("start application")
+
+// 	router.StaticFS("/uploads", gin.Dir(cfg.PublicFilePath, false))
+// 	router.Static("/public", "./public")
+
+// 	port := os.Getenv("PORT")
+// 	if port == "" {
+// 		port = "8080"
+// 	}
+
+// 	err := router.Run("0.0.0.0:" + port)
+// 	if err != nil {
+// 		logger.Error("server start error: ", err)
+// 		return
+// 	}
+// }
 
 func newRedisClient(ctx context.Context, cfg config.RedisConfig) (*redis.Client, error) {
 	c := redis.NewClient(&redis.Options{
