@@ -37,10 +37,12 @@ func main() {
 		panic(err)
 	}
 
-	fcmClient, err := fcm.NewFCMClient("./internal/config/serviceAccountKey.json")
-	if err != nil {
-		//panic(fmt.Sprintf("FCM init error: %v", err))
-	}
+	// fcmClient, err := fcm.NewFCMClient("./internal/config/serviceAccountKey.json")
+	// if err != nil {
+	// 	panic(fmt.Sprintf("FCM init error: %v", err))
+	// }
+
+	var fcmClient *fcm.FCMClient = nil
 
 	postgresSQLClient, err := startPostgresql(cfg, logger)
 	if err != nil {
