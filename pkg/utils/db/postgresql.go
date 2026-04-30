@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"restaurants/internal/appresult"
+	"restaurants/internal/enum"
 	"restaurants/pkg/client/postgresql"
 	"restaurants/pkg/logging"
 	"restaurants/pkg/utils"
@@ -23,18 +25,27 @@ func NewRepository(client postgresql.Client, logger *logging.Logger) utils.Repos
 	}
 }
 
-func (r *repository) UserRoleById(ctx context.Context, userID int) (*string, error) {
+func (r *repository) UserRoleById(ctx context.Context, userId int, businessesId *int) (*string, error) {
 	var role string
 
 	query := `
 		SELECT role
-		FROM users
-		WHERE id = $1
+		FROM user_businesses
+		WHERE (user_id = $1 AND role = $2 ) 
+		   OR (user_id = $1 AND businesses_id = $3)
+
 	`
-	err := r.client.QueryRow(ctx, query, userID).Scan(&role)
+	err := r.client.QueryRow(ctx, query, userId, enum.RoleAdmin, businessesId).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, appresult.ErrNotFoundType(userID, "user")
+			var content string
+				if businessesId != nil {
+					content = fmt.Sprintf("in user_businesses table, businesses_id=%d", *businessesId)
+				} else {
+					content = "in user_businesses table"
+				}
+			
+			return nil, appresult.ErrNotFoundType(userId, content)
 		}
 		return nil, err
 	}

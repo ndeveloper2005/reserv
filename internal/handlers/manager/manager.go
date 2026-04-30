@@ -29,8 +29,8 @@ import (
 	item "restaurants/internal/admin/item"
 	itemdb "restaurants/internal/admin/item/db"
 
-	clients "restaurants/internal/client/clients"
-	clientsdb "restaurants/internal/client/clients/db"
+	userClient "restaurants/internal/client/user"
+	userClientdb "restaurants/internal/client/user/db"
 
 	review "restaurants/internal/client/review"
 	reviewdb "restaurants/internal/client/review/db"
@@ -92,7 +92,6 @@ const (
 	orderAdminURL       = "/api/v1/admin/order"
 	categoryURL         = "/api/v1/category"
 
-	clientURL        = "/api/v1/client"
 	reviewURL        = "/api/v1/review"
 	searchHistoryURL = "/api/v1/searchHistory"
 	reservationURL   = "/api/v1/reservation"
@@ -101,6 +100,7 @@ const (
 	deviceTokenURL   = "/api/v1/deviceToken"
 	basketURL        = "/api/v1/basket"
 	orderClientURL   = "/api/v1/order"
+	organizationURL   = "/api/v1/organization"
 )
 
 func Manager(client *pgxpool.Pool, logger *logging.Logger, smsSender *sms_sender.Client, fcmClient *fcm.FCMClient) *gin.Engine {
@@ -178,10 +178,10 @@ func Manager(client *pgxpool.Pool, logger *logging.Logger, smsSender *sms_sender
 	businessesRouterHandler := businesses.NewHandler(logger, businessesRepository, itemRepository, typeRepository, reviewRepository, utilRepository, client)
 	businessesRouterHandler.Register(businessesRouterManager)
 
-	cilentsRouterManager := router.Group(clientURL)
-	cilentsRepository := clientsdb.NewRepository(client, logger)
-	cilentsRouterHandler := clients.NewHandler(client, logger, cilentsRepository, utilRepository, smsSender)
-	cilentsRouterHandler.Register(cilentsRouterManager)
+	userClientRouterManager := router.Group(userURL)
+	userClientRepository := userClientdb.NewRepository(client, logger)
+	userClientRouterHandler := userClient.NewHandler(client, logger, userClientRepository, utilRepository, smsSender)
+	userClientRouterHandler.Register(userClientRouterManager)
 
 	searchHistoryRouterManager := router.Group(searchHistoryURL)
 	searchHistoryRepository := searchHistorydb.NewRepository(client, logger)

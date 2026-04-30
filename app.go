@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,16 +22,16 @@ import (
 
 func main() {
 	var cfgPath string
-	flag.StringVar(&cfgPath, "c", "./etc/railway_internal_config.yaml", "path to config file")
+	flag.StringVar(&cfgPath, "c", "./etc/config.yaml", "path to config file")
 	flag.Parse()
 
 	cfg := config.GetConfig(cfgPath)
 	logger := logging.GetLogger()
 
-	// rds, err := newRedisClient(ctx, cfg.Redis)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("Redis connection error: %v", err))
-	// }
+	//rds, err := newRedisClient(ctx, cfg.Redis)
+	//if err != nil {
+	//	panic(fmt.Sprintf("Redis connection error: %v", err))
+	//}
 
 	smsSender, err := sms_sender.NewSmsSender(cfg.SmsSender)
 	if err != nil {
@@ -39,8 +40,7 @@ func main() {
 
 	fcmClient, err := fcm.NewFCMClient("./internal/config/serviceAccountKey.json")
 	if err != nil {
-		//panic(fmt.Sprintf("FCM init error: %v", err))
-		fcmClient = nil
+		panic(fmt.Sprintf("FCM init error: %v", err))
 	}
 
 	postgresSQLClient, err := startPostgresql(cfg, logger)

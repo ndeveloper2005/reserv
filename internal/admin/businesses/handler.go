@@ -28,6 +28,7 @@ const (
 	businessesConnect      = "/connectType/:id"
 	businessesAvailable    = "/available"
 	businessesAvailableAll = "/availableAll"
+	businessesStatusById         = "/status/:id"
 )
 
 type handler struct {
@@ -69,6 +70,7 @@ func (h *handler) Register(router *gin.RouterGroup) {
 	router.PATCH(businessesById, h.update)
 	router.DELETE(businessesById, h.delete)
 	router.PUT(businessesConnect, h.connectType)
+	router.PATCH(businessesStatusById, h.updateSatus)
 }
 
 func (h *handler) create(c *gin.Context) {
@@ -77,15 +79,10 @@ func (h *handler) create(c *gin.Context) {
 		additionalImages []string
 	)
 
-	role, err := h.extractUserIdAndRole(c)
-	if err != nil {
+	userId, err := utils.ExtractUserIdFromToken(c, h.client)
+	if err != nil{
 		appresult.HandleError(c, err)
-		return
-	}
-
-	if *role != enum.RoleAdmin {
-		appresult.HandleError(c, appresult.ErrForbidden)
-		return
+	 	return
 	}
 
 	jsonData := c.PostForm("data")
@@ -100,7 +97,7 @@ func (h *handler) create(c *gin.Context) {
 		return
 	}
 
-	businessId, err := h.repository.Create(context.TODO(), business)
+	businessId, err := h.repository.Create(context.TODO(), userId, business)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -165,19 +162,19 @@ func (h *handler) getOne(c *gin.Context) {
 		return
 	}
 
-	filter := review.ReviewFilter{
-		TypeId:   businessId,
-		TypeName: "businesses",
-		Limit:    4,
-	}
+	// filter := review.ReviewFilter{
+	// 	TypeId:   businessId,
+	// 	TypeName: "businesses",
+	// 	Limit:    4,
+	// }
 
-	reviews, err := h.reviewRepository.FindByFilter(context.TODO(), filter)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
+	// reviews, err := h.reviewRepository.FindByFilter(context.TODO(), filter)
+	// if err != nil {
+	// 	appresult.HandleError(c, err)
+	// 	return
+	// }
 
-	resp.Reviews = *reviews
+	//resp.Reviews = *reviews
 	resp.RatingsAvg = *reviewAverage
 	resp.Items = *items
 
@@ -264,20 +261,20 @@ func (h *handler) update(c *gin.Context) {
 		additionalImages []string
 	)
 
-	role, err := h.extractUserIdAndRole(c)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-	if *role != enum.RoleAdmin {
-		appresult.HandleError(c, appresult.ErrForbidden)
-		return
-	}
-
 	id := c.Param("id")
 	businessId, err := strconv.Atoi(id)
 	if err != nil {
 		appresult.HandleError(c, err)
+		return
+	}
+
+	role, err := h.extractUserIdAndRole(c, &businessId)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+	if *role != enum.RoleAdmin && *role != enum.RoleManager {
+		appresult.HandleError(c, appresult.ErrForbidden)
 		return
 	}
 
@@ -358,14 +355,14 @@ func (h *handler) update(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func (h *handler) delete(c *gin.Context) {
-	role, err := h.extractUserIdAndRole(c)
+func (h *handler) updateSatus(c *gin.Context) {
+	var (
+		status         UpdateStatus
+	)
+
+	userId, err := utils.ExtractUserIdFromToken(c, h.client)
 	if err != nil {
 		appresult.HandleError(c, err)
-		return
-	}
-	if *role != enum.RoleAdmin {
-		appresult.HandleError(c, appresult.ErrForbidden)
 		return
 	}
 
@@ -373,6 +370,39 @@ func (h *handler) delete(c *gin.Context) {
 	businessId, err := strconv.Atoi(id)
 	if err != nil {
 		appresult.HandleError(c, err)
+		return
+	}
+
+	if err := c.ShouldBindJSON(&status); err != nil {
+		fmt.Println("error binding JSON:", err)
+		appresult.HandleError(c, err)
+		return
+	}
+
+	err = h.repository.UpdateStatus(context.TODO(), businessId, userId, status)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, "successful")
+}
+
+func (h *handler) delete(c *gin.Context) {
+	id := c.Param("id")
+	businessId, err := strconv.Atoi(id)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+
+	role, err := h.extractUserIdAndRole(c, &businessId)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+	if *role != enum.RoleAdmin {
+		appresult.HandleError(c, appresult.ErrForbidden)
 		return
 	}
 
@@ -391,7 +421,14 @@ func (h *handler) delete(c *gin.Context) {
 func (h *handler) connectType(c *gin.Context) {
 	var types ConnectType
 
-	role, err := h.extractUserIdAndRole(c)
+	id := c.Param("id")
+	businessId, err := strconv.Atoi(id)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+
+	role, err := h.extractUserIdAndRole(c, &businessId)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -401,14 +438,7 @@ func (h *handler) connectType(c *gin.Context) {
 		appresult.HandleError(c, appresult.ErrForbidden)
 		return
 	}
-
-	id := c.Param("id")
-	businessId, err := strconv.Atoi(id)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-
+	
 	if err := c.ShouldBindJSON(&types); err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -423,13 +453,13 @@ func (h *handler) connectType(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
-func (h *handler) extractUserIdAndRole(c *gin.Context) (*string, error) {
+func (h *handler) extractUserIdAndRole(c *gin.Context, businessId *int) (*string, error) {
 	userId, err := utils.ExtractUserIdFromToken(c, h.client)
 	if err != nil && userId != -1{
 		return nil, err
 	}
 	if userId != -1 {
-		role, err := h.utilsRepository.UserRoleById(context.TODO(), userId)
+		role, err := h.utilsRepository.UserRoleById(context.TODO(), userId, businessId)
 		if err != nil {
 			return nil, err
 		}

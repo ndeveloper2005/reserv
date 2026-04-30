@@ -11,6 +11,7 @@ import (
 	"restaurants/internal/admin/subcategory"
 	"restaurants/internal/appresult"
 	"restaurants/internal/client/reservation/dbWS"
+	"restaurants/internal/enum"
 	"restaurants/pkg/client/postgresql"
 	"restaurants/pkg/logging"
 	"strings"
@@ -36,7 +37,7 @@ var (
 	formatTime = "15:04"
 )
 
-func (r *repository) Create(ctx context.Context, dto businesses.BusinessesReqDTO) (*int, error) {
+func (r *repository) Create(ctx context.Context, userId int, dto businesses.BusinessesReqDTO) (*int, error) {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
 		fmt.Println("error :", err)
@@ -127,6 +128,19 @@ func (r *repository) Create(ctx context.Context, dto businesses.BusinessesReqDTO
 		}
 	}
 
+	query = `
+		INSERT INTO user_businesses
+			(user_id, businesses_id, role)
+		VALUES
+			($1, $2, $3)
+	`
+	_,err = tx.Exec(ctx, query,
+		userId, businessId, enum.RoleManager)
+	if err != nil {
+		fmt.Println("error insert user in businesses:", err)
+		return nil, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		fmt.Println("error commit transaction:", err)
 		return nil, err
@@ -214,7 +228,7 @@ func (r *repository) GetOne(ctx context.Context, businessId int, baseURL string)
 			JOIN dictionary d_district  ON b.district_dictionary_id = d_district.id
 			JOIN dictionary d_desc      ON b.description_dictionary_id = d_desc.id
 			LEFT JOIN dictionary d_dress ON b.dress_code_dictionary_id = d_dress.id
-			WHERE b.id = $1
+			WHERE b.id = $1;
 		`
 	err := r.client.QueryRow(ctx, qBusiness, businessId).Scan(
 		&res.Id,
@@ -1088,24 +1102,18 @@ func (r *repository) Delete(ctx context.Context, businessId int) error {
 		return appresult.ErrNotFoundType(businessId, "businesses")
 	}
 
-	q = `DELETE FROM businesses_subcategories WHERE businesses_id = $1`
-	if _, err = tx.Exec(ctx, q, businessId); err != nil {
-		return err
-	}
+	queries := []string{
+	`DELETE FROM businesses_subcategories WHERE businesses_id = $1`,
+	`DELETE FROM image_businesses WHERE businesses_id = $1`,
+	`DELETE FROM businesses_types WHERE businesses_id = $1`,
+	`DELETE FROM user_businesses WHERE businesses_id = $1`,
+	`DELETE FROM businesses WHERE id = $1`,
+}
 
-	q = `DELETE FROM image_businesses WHERE businesses_id = $1`
-	if _, err = tx.Exec(ctx, q, businessId); err != nil {
-		return err
-	}
-
-	q = `DELETE FROM businesses_types WHERE businesses_id = $1`
-	if _, err = tx.Exec(ctx, q, businessId); err != nil {
-		return err
-	}
-
-	q = `DELETE FROM businesses WHERE id = $1`
-	if _, err = tx.Exec(ctx, q, businessId); err != nil {
-		return err
+	for _, q := range queries {
+		if _, err = tx.Exec(ctx, q, businessId); err != nil {
+			return err
+		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -1196,3 +1204,65 @@ func (r *repository) ConnectType(ctx context.Context, businessId int, dto busine
 
 	return &result, nil
 }
+
+func (r *repository) UpdateStatus(ctx context.Context, businessId int,  userId int, status businesses.UpdateStatus)  error {
+
+	var (
+		exists bool
+		existsBusinesses bool
+	)
+
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM businesses
+			WHERE id = $1 AND status = 'PENDING'
+		);
+	`
+	err := r.client.QueryRow(ctx, query, businessId).Scan(&existsBusinesses)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return appresult.ErrNotFoundType(businessId, "businesses")
+		}
+		return err
+	}
+
+	if !existsBusinesses {
+		return appresult.ErrStatus
+	}
+
+	query = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM user_businesses ub
+			WHERE (ub.user_id = $1 AND ub.businesses_id = $2 AND ub.role = $3)
+			OR (ub.user_id = $1 AND ub.role = 'ADMIN')
+		);
+	`
+	err = r.client.QueryRow(ctx, query, userId, businessId, enum.RoleManager).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return appresult.ErrForbidden
+	}
+
+	if strings.HasPrefix(status.Status, "CANCELED") && status.Reason == "" {
+		return appresult.ErrReason
+	}
+
+	_, err = r.client.Exec(ctx, `
+		UPDATE businesses
+		SET status = $1, reason = $2, updated_at = now()
+		WHERE id = $3
+	`, status.Status, status.Reason, businessId)
+
+	if err != nil {
+		fmt.Println(err)
+		return appresult.ErrInternalServer
+	}
+
+	return nil
+}
+

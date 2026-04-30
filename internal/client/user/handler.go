@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"restaurants/internal/appresult"
-	"restaurants/internal/enum"
 	"restaurants/internal/handlers"
 	"restaurants/pkg/logging"
 	"restaurants/pkg/sms_sender"
@@ -51,7 +50,6 @@ func (h *handler) Register(router *gin.RouterGroup) {
 	router.POST(profile, h.createProfile)
 	router.GET(profile, h.getProfile)
 	router.PUT(clientURL, h.update)
-	router.GET(clientURL, h.getAll)
 	router.POST(logout, h.logout)
 }
 
@@ -66,7 +64,7 @@ func (h *handler) register(c *gin.Context) {
 
 	randomNumber, err := h.repository.Register(c, register)
 	if err != nil {
-		log.Println("[ERROR]", "failed to register client:", err)
+		log.Println("[ERROR]", "failed to register user:", err)
 		appresult.HandleError(c, err)
 		return
 	}
@@ -98,7 +96,7 @@ func (h *handler) checkOTP(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateTokenPair(resp.ClientId)
+	token, err := utils.GenerateTokenPair(resp.UserId)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -110,22 +108,22 @@ func (h *handler) checkOTP(c *gin.Context) {
 
 func (h *handler) createProfile(c *gin.Context) {
 	var (
-		client    ClientReqDTO
+		user    UserReqDTO
 		imagePath string
 	)
-	clientId, err := utils.ExtractUserIdFromToken(c, h.client)
+	userId, err := utils.ExtractUserIdFromToken(c, h.client)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
 	}
 
 	jsonData := c.PostForm("data")
-	if err := json.Unmarshal([]byte(jsonData), &client); err != nil {
+	if err := json.Unmarshal([]byte(jsonData), &user); err != nil {
 		appresult.HandleError(c, err)
 		return
 	}
 
-	uploadDir := filepath.Join("uploads/client")
+	uploadDir := filepath.Join("uploads/user")
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -142,7 +140,7 @@ func (h *handler) createProfile(c *gin.Context) {
 
 	baseURL := c.MustGet("baseURL").(string)
 
-	resp, err := h.repository.CreateProfile(context.TODO(), clientId, client, imagePath, baseURL)
+	resp, err := h.repository.CreateProfile(context.TODO(), userId, user, imagePath, baseURL)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -152,7 +150,7 @@ func (h *handler) createProfile(c *gin.Context) {
 }
 
 func (h *handler) getProfile(c *gin.Context) {
-	clientId, err := utils.ExtractUserIdFromToken(c, h.client)
+	userId, err := utils.ExtractUserIdFromToken(c, h.client)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -160,7 +158,7 @@ func (h *handler) getProfile(c *gin.Context) {
 
 	baseURL := c.MustGet("baseURL").(string)
 
-	resp, err := h.repository.GetProfile(context.TODO(), clientId, baseURL)
+	resp, err := h.repository.GetProfile(context.TODO(), userId, baseURL)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -171,10 +169,10 @@ func (h *handler) getProfile(c *gin.Context) {
 
 func (h *handler) update(c *gin.Context) {
 	var (
-		client    ClientUpdateDTO
+		user    UserUpdateDTO
 		imagePath string
 	)
-	clientId, err := utils.ExtractUserIdFromToken(c, h.client)
+	userId, err := utils.ExtractUserIdFromToken(c, h.client)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -182,13 +180,13 @@ func (h *handler) update(c *gin.Context) {
 
 	jsonData := c.PostForm("data")
 	if jsonData != "" {
-		if err := json.Unmarshal([]byte(jsonData), &client); err != nil {
+		if err := json.Unmarshal([]byte(jsonData), &user); err != nil {
 			appresult.HandleError(c, err)
 			return
 		}
 	}
 
-	uploadDir := filepath.Join("uploads/client")
+	uploadDir := filepath.Join("uploads/user")
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -202,40 +200,10 @@ func (h *handler) update(c *gin.Context) {
 			return
 		}
 	}
-	if client.Name == "" || client.PhoneNumber == "" {
-		appresult.HandleError(c, err)
-		return
-	}
 
 	baseURL := c.MustGet("baseURL").(string)
 
-	resp, err := h.repository.UpdateProfile(context.TODO(), clientId, client, imagePath, baseURL)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
-
-func (h *handler) getAll(c *gin.Context) {
-	role, err := h.extractUserIdAndRole(c)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-	
-	if *role != enum.RoleAdmin &&  *role != enum.RoleManager &&  *role != enum.RoleEmployee{
-		appresult.HandleError(c, appresult.ErrForbidden)
-		return
-	}
-
-	search := c.Query("search")
-	offset := c.Query("offset")
-	limit := c.Query("limit")
-	baseURL := c.MustGet("baseURL").(string)
-
-	resp, err := h.repository.GetAllClient(context.TODO(), search, offset, limit, baseURL)
+	resp, err := h.repository.UpdateProfile(context.TODO(), userId, user, imagePath, baseURL)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
@@ -261,18 +229,4 @@ func (h *handler) logout(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, "success!!!")
-}
-
-func (h *handler) extractUserIdAndRole(c *gin.Context) (*string, error) {
-	userID, err := utils.ExtractUserIdFromToken(c, h.client)
-	if err != nil {
-		return nil, err
-	}
-
-	role, err := h.utilRepository.UserRoleById(context.TODO(), userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return role, nil
 }

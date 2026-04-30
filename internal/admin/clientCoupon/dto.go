@@ -1,6 +1,6 @@
 package clientCoupon
 
-import "restaurants/internal/client/clients"
+import "restaurants/internal/client/user"
 
 type AssignCouponReqDTO struct {
 	ClientId          int   `json:"client_id"`

@@ -277,7 +277,7 @@ func (h *handler) extractUserIdAndRole(c *gin.Context) (*string, *int, error) {
 		return nil, nil, err
 	}
 
-	role, err := h.utilsRepository.UserRoleById(context.TODO(), userID)
+	role, err := h.utilsRepository.UserRoleById(context.TODO(), userID, nil)
 	if err != nil {
 		return nil, nil, err
 	}

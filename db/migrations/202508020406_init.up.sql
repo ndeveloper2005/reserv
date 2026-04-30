@@ -15,11 +15,7 @@ INSERT INTO dictionary (tm, en, ru) VALUES
 ('Mary', 'Mary', 'Мары'),
 ('Ahal', 'Ahal', 'Ахал'),
 ('Balkan', 'Balkan', 'Балкан'),
-('Arkadag şäher', 'Arkadag city', 'Город Аркадаг'),
-('Restoranlar', 'Restaurants', 'Рестораны'),
-('Kuponly restoranlar', 'Restaurants with coupons', 'Рестораны с купонами'), 
-('Iş duşuşyklary üçin', 'For business meetings', 'Для деловых встреч'),
-('Terrasa', 'Terrace', 'Терраса');
+('Arkadag şäher', 'Arkadag city', 'Город Аркадаг');
 
 CREATE TABLE  IF NOT EXISTS provinces (
     "id" bigserial primary key,
@@ -39,6 +35,22 @@ CREATE TABLE  IF NOT EXISTS provinces (
     (6), 
     (7);
 
+    CREATE TABLE  IF NOT EXISTS users (
+    "id" bigserial primary key,
+    "name" character varying(250),
+    "last_name" varchar(250),
+    "phone_number" varchar(250),
+    "image_path" varchar(250),
+    "location" varchar(250),
+    "otp" int DEFAULT 0,
+    "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
+    "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL
+    );
+
+INSERT INTO users (name)
+    VALUES ('admin');
+    -- eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidGltZV9ub3ciOiIyMDI2LTA0LTI5VDE1OjAzOjAxLjIyMDc2MTQwN1oifQ.UJDAMZkidYSW99RbqGLscWZFaP7R6Q7o1h46hA1pzDY- password
+
     CREATE TABLE IF NOT EXISTS categories (
     "id" bigserial PRIMARY KEY,
     "name_dictionary_id" bigint NOT NULL,
@@ -48,10 +60,6 @@ CREATE TABLE  IF NOT EXISTS provinces (
     
     CONSTRAINT name_dictionary_id_category_fk FOREIGN KEY ("name_dictionary_id") REFERENCES dictionary("id")
 );
-
-INSERT INTO categories (name_dictionary_id) 
-    VALUES 
-    (8);
 
 CREATE TABLE  IF NOT EXISTS subcategories (
     "id" bigserial primary key,
@@ -65,11 +73,6 @@ CREATE TABLE  IF NOT EXISTS subcategories (
     CONSTRAINT name_dictionary_id_subcategories_fk FOREIGN KEY ("name_dictionary_id") REFERENCES dictionary("id")
     );
 
-     INSERT INTO subcategories (category_id, name_dictionary_id) VALUES 
-    (1, 9), 
-    (1, 10), 
-    (1, 11);
-
 CREATE TABLE IF NOT EXISTS businesses (
     "id" bigserial PRIMARY KEY,
     "name" varchar(250) NOT NULL,
@@ -82,6 +85,8 @@ CREATE TABLE IF NOT EXISTS businesses (
     "opens_time" TIME NOT NULL DEFAULT '08:00',
     "closes_time" TIME NOT NULL DEFAULT '23:00',
     "expires" BIGINT DEFAULT 0,
+    "status" varchar(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','CANCELED','EXPIRED')),
+    "reason" varchar(250),
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
      
@@ -90,6 +95,20 @@ CREATE TABLE IF NOT EXISTS businesses (
     CONSTRAINT description_dictionary_id_businesses_fk FOREIGN KEY ("description_dictionary_id") REFERENCES dictionary("id"),
     CONSTRAINT fk_dress_code_dictionary FOREIGN KEY ("dress_code_dictionary_id") REFERENCES dictionary("id")
     );
+
+CREATE TABLE  IF NOT EXISTS user_businesses (
+    "id" bigserial primary key,
+    "user_id" bigint NOT NULL,
+    "businesses_id" bigint,
+    "role" varchar(50) CHECK (role IN ('ADMIN', 'MANAGER', 'EMPLOYEE', 'OPERATOR')),
+    "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
+
+    CONSTRAINT businesses_id_user_businesses_fk FOREIGN KEY ("businesses_id") REFERENCES businesses("id"),
+    CONSTRAINT user_id_user_businesses_fk FOREIGN KEY ("user_id") REFERENCES users("id")
+    );
+
+INSERT INTO user_businesses (user_id, role)
+    VALUES (1, 'ADMIN');  
 
 CREATE TABLE IF NOT EXISTS businesses_subcategories (
     "id" bigserial primary key,
@@ -112,21 +131,6 @@ CREATE TABLE IF NOT EXISTS image_businesses (
      
     CONSTRAINT businesses_id_image_businesses_fk FOREIGN KEY ("businesses_id") REFERENCES businesses("id")
     );
-
-CREATE TABLE  IF NOT EXISTS users (
-    "id" bigserial primary key,
-    "name" character varying(250) NOT NULL ,
-    "password" character varying(250)  NOT NULL,
-    "role" varchar(50) NOT NULL CHECK (role IN ('ADMIN', 'MANAGER', 'EMPLOYEE')),
-    "businesses_id" bigint DEFAULT NULL,
-    "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
-    "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
-
-    CONSTRAINT businesses_id_users_fk FOREIGN KEY ("businesses_id") REFERENCES businesses("id")
-    );
-
-INSERT INTO users (name, password, role)
-    VALUES ('admin', '$2a$10$mNnKCThvzD9uUtQLu8C0UO7WyLok64xlv8XfOLqnm5oBBaq3HxAbG', 'ADMIN');
 
     CREATE TABLE  IF NOT EXISTS types (
     "id" bigserial primary key,
@@ -192,20 +196,9 @@ CREATE TABLE  IF NOT EXISTS items_item_categories (
     CONSTRAINT item_category_id_items_item_categories_fk FOREIGN KEY ("item_category_id") REFERENCES item_categories("id")
     );
 
-   CREATE TABLE IF NOT EXISTS clients (
-    "id" bigserial PRIMARY KEY,
-    "name" varchar(250) DEFAULT '',
-    "last_name" varchar(250) DEFAULT '',
-    "phone_number" varchar(250) NOT NULL,
-    "image_path" varchar(250) DEFAULT '',
-    "otp" int DEFAULT 0,
-    "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
-    "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL
-  ); 
-
   CREATE TABLE IF NOT EXISTS reviews (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "type_id" bigint NOT NULL,
     "type_name" varchar(50) NOT NULL CHECK (type_name IN ('business', 'item')),
     "over_all" bigint NOT NULL DEFAULT 0,
@@ -217,7 +210,7 @@ CREATE TABLE  IF NOT EXISTS items_item_categories (
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
 
-    CONSTRAINT client_id_review_fk FOREIGN KEY ("client_id") REFERENCES clients("id"),
+    CONSTRAINT user_id_review_fk FOREIGN KEY ("user_id") REFERENCES users("id"),
     CONSTRAINT over_all_review_ch CHECK ("over_all" >= 0 AND "over_all" <= 5),
     CONSTRAINT food_review_ch CHECK ("food" >= 0 AND "food" <= 5),
     CONSTRAINT service_review_ch CHECK ("service" >= 0 AND "service" <= 5),
@@ -227,12 +220,12 @@ CREATE TABLE  IF NOT EXISTS items_item_categories (
 
 CREATE TABLE IF NOT EXISTS search_histories (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "search" varchar(250),
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
 
-    CONSTRAINT client_id_search_histories_fk FOREIGN KEY ("client_id") REFERENCES clients("id")
+    CONSTRAINT user_id_review_fk FOREIGN KEY ("user_id") REFERENCES users("id")
   );
 
   CREATE TABLE IF NOT EXISTS businesses_tables (
@@ -249,18 +242,18 @@ CREATE TABLE IF NOT EXISTS search_histories (
 CREATE TABLE IF NOT EXISTS reservations (
     "id" bigserial PRIMARY KEY,
     "businesses_id" bigint NOT NULL,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "count_person" bigint NOT NULL DEFAULT 1,
     "reservation_date" TIMESTAMP,
     "wish_content" varchar(250),
-    "status" varchar(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','confirmed','completed','cancelled_by_businesses','cancelled_by_client', 'no_show')),
+    "status" varchar(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','CONFIRMED','COMPLETED','CANCELLED_BY_BUSINESSES','CANCELLED_BY_CLIENT','NO_SHOW')),
     "businesses_table_id" BIGINT,
     "reason" varchar(250),
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
 
     CONSTRAINT businesses_id_reservations_fk FOREIGN KEY ("businesses_id") REFERENCES businesses("id"),
-    CONSTRAINT client_id_reservations_fk FOREIGN KEY ("client_id") REFERENCES clients("id"),
+    CONSTRAINT user_id_reservations_fk FOREIGN KEY ("user_id") REFERENCES users("id"),
     CONSTRAINT businesses_table_id_reservation_fk FOREIGN KEY ("businesses_table_id") REFERENCES businesses_tables("id")
     );
 
@@ -277,17 +270,17 @@ CREATE TABLE IF NOT EXISTS businesses_coupons (
     CONSTRAINT coupon_dictionary_id_businesses_coupons_fk FOREIGN KEY ("coupon_dictionary_id") REFERENCES dictionary("id")
 );
 
-CREATE TABLE IF NOT EXISTS client_coupons (
+CREATE TABLE IF NOT EXISTS user_coupons (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "businesses_coupon_id" bigint NOT NULL,
     "booking_id" bigint,
     "booking_type" VARCHAR(20) CHECK (booking_type IN ('RESERVATION','ORDER')),
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     
-    CONSTRAINT client_id_client_coupons_fk FOREIGN KEY ("client_id") REFERENCES clients("id"),
-    CONSTRAINT businesses_coupon_id_client_coupons_fk FOREIGN KEY ("businesses_coupon_id") REFERENCES businesses_coupons("id")
+    CONSTRAINT user_id_user_coupons_fk FOREIGN KEY ("user_id") REFERENCES users("id"),
+    CONSTRAINT businesses_coupon_id_user_coupons_fk FOREIGN KEY ("businesses_coupon_id") REFERENCES businesses_coupons("id")
 );
 
 CREATE TABLE IF NOT EXISTS reservation_items (
@@ -304,12 +297,12 @@ CREATE TABLE IF NOT EXISTS reservation_items (
 
 CREATE TABLE IF NOT EXISTS device_token (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint ,
+    "user_id" bigint ,
     "token" varchar(250) NOT NULL UNIQUE,
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     
-    CONSTRAINT client_id_deviceToken_fk FOREIGN KEY ("client_id") REFERENCES clients("id")
+    CONSTRAINT user_id_deviceToken_fk FOREIGN KEY ("user_id") REFERENCES users("id")
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -326,49 +319,49 @@ CREATE TABLE IF NOT EXISTS notifications (
     CONSTRAINT businesses_id_notifications_fk FOREIGN KEY ("businesses_id") REFERENCES businesses("id")
 );
 
-CREATE TABLE IF NOT EXISTS client_notifications (
+CREATE TABLE IF NOT EXISTS user_notifications (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint ,
+    "user_id" bigint ,
     "notification_id" bigint NOT NULL,
     "device_token_id" bigint NOT NULL,
     "read" BOOLEAN DEFAULT FALSE,
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     
-    CONSTRAINT notification_id_notification_clients_fk FOREIGN KEY ("notification_id") REFERENCES notifications("id") ON DELETE CASCADE,
-    CONSTRAINT client_id_notification_clients_fk FOREIGN KEY ("client_id") REFERENCES clients("id"),
-    CONSTRAINT device_token_id_notification_clients_fk FOREIGN KEY ("device_token_id") REFERENCES device_token("id"),
-    CONSTRAINT unique_notification_client_fk UNIQUE (notification_id, client_id)
+    CONSTRAINT notification_id_user_notifications_fk FOREIGN KEY ("notification_id") REFERENCES notifications("id") ON DELETE CASCADE,
+    CONSTRAINT user_id_user_notifications_fk FOREIGN KEY ("user_id") REFERENCES users("id"),
+    CONSTRAINT device_token_id_user_notifications_fk FOREIGN KEY ("device_token_id") REFERENCES device_token("id"),
+    CONSTRAINT unique_user_notifications_fk UNIQUE (notification_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS basket (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "item_id" bigint NOT NULL,
     "count" bigint NOT NULL,
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC') NOT NULL,
     
-    CONSTRAINT client_id_basket_fk FOREIGN KEY ("client_id") REFERENCES clients("id"),
+    CONSTRAINT user_id_basket_fk FOREIGN KEY ("user_id") REFERENCES users("id"),
     CONSTRAINT item_id_basket_fk FOREIGN KEY ("item_id") REFERENCES items("id")
 );
 
 CREATE TABLE IF NOT EXISTS orders (
     "id" bigserial PRIMARY KEY,
-    "client_id" bigint NOT NULL,
+    "user_id" bigint NOT NULL,
     "businesses_id" bigint NOT NULL,
-    "client_coupon_id" bigint,
+    "user_coupon_id" bigint,
     "total_price" real NOT NULL,
     "place" varchar(250) NOT NULL,
     "order_time" TIMESTAMP NOT NULL,
-    "status" varchar(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','COMPLETED_BY_CLIENT','COMPLETED_BY_BUSINESSES','CANCELLED_BY_BUSINESSES','CANCELLED_BY_CLIENT')),
+    "status" varchar(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','COMPLETED_BY_CLIENT','COMPLETED_BY_BUSINESSES','CANCELED_BY_BUSINESSES','CANCELED_BY_CLIENT')),
     "reason" varchar(250),
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
 
-    CONSTRAINT client_id_order_fk FOREIGN KEY ("client_id") REFERENCES clients(id),
+    CONSTRAINT user_id_order_fk FOREIGN KEY ("user_id") REFERENCES users(id),
     CONSTRAINT businesses_id_order_fk FOREIGN KEY ("businesses_id") REFERENCES businesses(id),
-    CONSTRAINT client_coupon_order_id_fk FOREIGN KEY ("client_coupon_id") REFERENCES client_coupons(id)
+    CONSTRAINT user_coupon_order_id_fk FOREIGN KEY ("user_coupon_id") REFERENCES user_coupons(id)
 );
 
 CREATE TABLE IF NOT EXISTS order_items (

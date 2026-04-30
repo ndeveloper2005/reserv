@@ -772,7 +772,7 @@ func (r *repository) updateOrderStatus(
 		if currentStatus == "APPROVED" && newStatus == "COMPLETED_BY_CLIENT" {
 			allowed = true
 		}
-		if currentStatus == "PENDING" && newStatus == "CANCELLED_BY_CLIENT" {
+		if currentStatus == "PENDING" && newStatus == "CANCELED_BY_CLIENT" {
 			allowed = true
 		}
 	} else {
@@ -782,16 +782,16 @@ func (r *repository) updateOrderStatus(
 		if currentStatus == "APPROVED" && newStatus == "COMPLETED_BY_BUSINESSES" {
 			allowed = true
 		}
-		if currentStatus == "PENDING" && newStatus == "CANCELLED_BY_BUSINESSES" {
+		if currentStatus == "PENDING" && newStatus == "CANCELED_BY_BUSINESSES" {
 			allowed = true
 		}
 	}
 
 	if !allowed {
-		return 0, 0, appresult.ErrForbidden
+		return 0, 0, appresult.ErrStatus
 	}
 
-	if strings.HasPrefix(newStatus, "CANCELLED") && reason == "" {
+	if strings.HasPrefix(newStatus, "CANCELED") && reason == "" {
 		return 0, 0, appresult.ErrReason
 	}
 

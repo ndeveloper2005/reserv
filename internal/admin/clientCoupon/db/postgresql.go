@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"restaurants/internal/admin/clientCoupon"
 	"restaurants/internal/appresult"
-	"restaurants/internal/client/clients"
+	"restaurants/internal/client/user"
 	"restaurants/pkg/client/postgresql"
 	"restaurants/pkg/logging"
 	"strconv"

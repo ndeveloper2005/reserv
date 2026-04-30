@@ -3,7 +3,7 @@ package businesses
 import "context"
 
 type Repository interface {
-	Create(ctx context.Context, business BusinessesReqDTO) (*int, error)
+	Create(ctx context.Context, userId int, business BusinessesReqDTO) (*int, error)
 	AddImages(ctx context.Context, businessId int, mainImage string, additionalImages []string, baseURL string) (*BusinessesResDTO, error)
 	GetOne(ctx context.Context, businessId int, baseURL string) (*BusinessesResDTO, error)
 	GetAll(ctx context.Context, filter BusinessesFilter, baseURL string) (*[]BusinessesAllDTO, *int, error)
@@ -13,4 +13,5 @@ type Repository interface {
 	ConnectType(ctx context.Context, businessId int, cuisines ConnectType) (*[]ConnectTypes, error)
 	Available(ctx context.Context, baseURL string) (*[]BusinessesAllDTO, error)
 	AvailableAll(ctx context.Context, filter BusinessesFilter, baseURL string) (*AllAndSum, error)
+	UpdateStatus(ctx context.Context, businessId int, userId int, status UpdateStatus)  error
 }

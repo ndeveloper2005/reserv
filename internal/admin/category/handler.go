@@ -75,7 +75,7 @@ func (h *handler) create(c *gin.Context) {
 
 	image, err := c.FormFile("image")
 	if err != nil {
-		appresult.HandleError(c, err)
+		appresult.HandleError(c, appresult.ErrNotImage)
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *handler) create(c *gin.Context) {
 	baseURL := c.MustGet("baseURL").(string)
 
 	resp, err := h.repository.Create(context.TODO(), category, imagePath, baseURL)
-	if err != nil {
+	if err != nil {		
 		appresult.HandleError(c, err)
 		return
 	}
@@ -227,11 +227,11 @@ func (h *handler) delete(c *gin.Context) {
 
 func (h *handler) extractUserIdAndRole(c *gin.Context) (*string, error) {
 	userId, err := utils.ExtractUserIdFromToken(c, h.client)
-	if err != nil && userId != -1{
+	if err != nil{
 		return nil, err
 	}
 	if userId != -1 {
-		role, err := h.utilsRepository.UserRoleById(context.TODO(), userId)
+		role, err := h.utilsRepository.UserRoleById(context.TODO(), userId, nil)
 		if err != nil {
 			return nil, err
 		}

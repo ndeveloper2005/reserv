@@ -98,3 +98,8 @@ type AllAndSum struct {
 type ConnectType struct {
 	TypeIds []int `json:"type_ids"`
 }
+
+type UpdateStatus struct {
+	Status string `json:"status" binding:"required"`
+	Reason string `json:"reason"`
+}

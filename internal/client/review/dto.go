@@ -1,6 +1,6 @@
 package review
 
-import "restaurants/internal/client/clients"
+import "restaurants/internal/client/user"
 
 type ReviewFilter struct {
 	ClientId int    `form:"client_id"`
@@ -13,7 +13,7 @@ type ReviewFilter struct {
 
 type ReviewDTO struct {
 	Id        int            `json:"id"`
-	Client    clients.Client `json:"client"`
+	Client    clients.User   `json:"users"`
 	TypeId    int            `json:"type_id"`
 	TypeName  string         `json:"type_name"`
 	OverAll   int            `json:"over_all"`
@@ -38,7 +38,7 @@ type ReviewReqDTO struct {
 
 type ReviewALLDTO struct {
 	Id        int            `json:"id"`
-	Client    clients.Client `json:"client"`
+	Client    clients.User   `json:"user"`
 	OverAll   int            `json:"over_all"`
 	Comment   string         `json:"comment"`
 	CreatedAt string         `json:"created_at"`
