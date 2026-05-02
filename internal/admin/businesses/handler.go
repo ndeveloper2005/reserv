@@ -26,9 +26,7 @@ const (
 	businessesURL          = ""
 	businessesById         = "/:id"
 	businessesConnect      = "/connectType/:id"
-	businessesAvailable    = "/available"
-	businessesAvailableAll = "/availableAll"
-	businessesStatusById         = "/status/:id"
+	businessesStatusById   = "/status/:id"
 )
 
 type handler struct {
@@ -64,8 +62,6 @@ func NewHandler(
 func (h *handler) Register(router *gin.RouterGroup) {
 	router.POST(businessesURL, h.create)
 	router.GET(businessesById, h.getOne)
-	router.GET(businessesAvailable, h.available)
-	router.GET(businessesAvailableAll, h.availableAll)
 	router.GET(businessesURL, h.getAll)
 	router.PATCH(businessesById, h.update)
 	router.DELETE(businessesById, h.delete)
@@ -155,74 +151,7 @@ func (h *handler) getOne(c *gin.Context) {
 		appresult.HandleError(c, err)
 		return
 	}
-
-	reviewAverage, err := h.reviewRepository.GetAveragesByRestaurantID(context.TODO(), businessId, "business")
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-
-	// filter := review.ReviewFilter{
-	// 	TypeId:   businessId,
-	// 	TypeName: "businesses",
-	// 	Limit:    4,
-	// }
-
-	// reviews, err := h.reviewRepository.FindByFilter(context.TODO(), filter)
-	// if err != nil {
-	// 	appresult.HandleError(c, err)
-	// 	return
-	// }
-
-	//resp.Reviews = *reviews
-	resp.RatingsAvg = *reviewAverage
 	resp.Items = *items
-
-	c.JSON(http.StatusOK, resp)
-}
-
-func (h *handler) available(c *gin.Context) {
-	userID, err := utils.ExtractUserIdFromToken(c, h.client)
-	if err != nil && userID != -1 {
-		appresult.HandleError(c, err)
-		return
-	}
-
-	baseURL := c.MustGet("baseURL").(string)
-	resp, err := h.repository.Available(context.TODO(), baseURL)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, resp)
-}
-
-func (h *handler) availableAll(c *gin.Context) {
-	userId, err := utils.ExtractUserIdFromToken(c, h.client)
-	if err != nil && userId != -1 {
-		appresult.HandleError(c, err)
-		return
-	}
-	var filter BusinessesFilter
-	_ = c.ShouldBindQuery(&filter)
-
-	if filter.TypesRaw != "" {
-		filter.Types = parseIntArray(filter.TypesRaw)
-	}
-	if filter.RatingRaw != "" {
-		filter.Rating = parseIntArray(filter.RatingRaw)
-	}
-	if filter.SortRaw != "" {
-		filter.Sort = parseStringArray(filter.SortRaw)
-	}
-
-	baseURL := c.MustGet("baseURL").(string)
-
-	resp, err := h.repository.AvailableAll(context.TODO(), filter, baseURL)
-	if err != nil {
-		appresult.HandleError(c, err)
-		return
-	}
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -231,14 +160,8 @@ func (h *handler) getAll(c *gin.Context) {
 	var filter BusinessesFilter
 	_ = c.ShouldBindQuery(&filter)
 
-	if filter.TypesRaw != "" {
-		filter.Types = parseIntArray(filter.TypesRaw)
-	}
-	if filter.RatingRaw != "" {
-		filter.Rating = parseIntArray(filter.RatingRaw)
-	}
-	if filter.SortRaw != "" {
-		filter.Sort = parseStringArray(filter.SortRaw)
+	if filter.SubcategoryIdsRaw != "" {
+		filter.SubcategoryIds = parseIntArray(filter.SubcategoryIdsRaw)
 	}
 
 	baseURL := c.MustGet("baseURL").(string)
@@ -360,16 +283,20 @@ func (h *handler) updateSatus(c *gin.Context) {
 		status         UpdateStatus
 	)
 
-	userId, err := utils.ExtractUserIdFromToken(c, h.client)
+	id := c.Param("id")
+	businessId, err := strconv.Atoi(id)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return
 	}
 
-	id := c.Param("id")
-	businessId, err := strconv.Atoi(id)
+	role, err := h.extractUserIdAndRole(c, &businessId)
 	if err != nil {
 		appresult.HandleError(c, err)
+		return
+	}
+	if *role != enum.RoleAdmin && *role != enum.RoleManager {
+		appresult.HandleError(c, appresult.ErrForbidden)
 		return
 	}
 
@@ -379,7 +306,7 @@ func (h *handler) updateSatus(c *gin.Context) {
 		return
 	}
 
-	err = h.repository.UpdateStatus(context.TODO(), businessId, userId, status)
+	err = h.repository.UpdateStatus(context.TODO(), businessId, status)
 	if err != nil {
 		appresult.HandleError(c, err)
 		return

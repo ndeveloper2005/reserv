@@ -21,3 +21,5 @@ rad.json
 #Test results file
 TestResults.xml
 internal/config/serviceAccountKey.json
+#logs
+*.logs/all.log

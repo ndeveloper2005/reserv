@@ -15,7 +15,7 @@ jwt_key: eyJhbGciI2W8NvugFqHRY
 secret_key: eyJhwerweirhweoirewiurhiI2W8NvugFqHRY
 
 SMS_SENDER:
-  BasicOptMsg: 'Hormatly müşderi sizin tassykalýjy kodynyz: %d' # !!! IT SHOULD HAVE EXACTLY ONE '%d' TO REPLACE WITH CODE!!!
+  BasicOptMsg: "Hormatly müşderi sizin tassykalýjy kodynyz: %d" # !!! IT SHOULD HAVE EXACTLY ONE '%d' TO REPLACE WITH CODE!!!
 
 Redis:
   Addr: "maglev.proxy.rlwy.net:46113"

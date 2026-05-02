@@ -11,7 +11,5 @@ type Repository interface {
 	Delete(ctx context.Context, businessId int) error
 	GetAndDeleteImage(ctx context.Context, businessId int, isMain bool) (*[]string, error)
 	ConnectType(ctx context.Context, businessId int, cuisines ConnectType) (*[]ConnectTypes, error)
-	Available(ctx context.Context, baseURL string) (*[]BusinessesAllDTO, error)
-	AvailableAll(ctx context.Context, filter BusinessesFilter, baseURL string) (*AllAndSum, error)
-	UpdateStatus(ctx context.Context, businessId int, userId int, status UpdateStatus)  error
+	UpdateStatus(ctx context.Context, businessId int, status UpdateStatus)  error
 }

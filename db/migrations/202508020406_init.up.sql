@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS items (
     "value" real NOT NULL,
     "businesses_id" bigint NOT NULL,
     "type_id" bigint NOT NULL,
-    "is_chosen" boolean DEFAULT FALSE,
+    -- "is_chosen" boolean DEFAULT FALSE,
     "created_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
     "updated_at" TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')  NOT NULL,
 
