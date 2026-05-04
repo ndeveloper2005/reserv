@@ -15,6 +15,13 @@ type BusinessesFilter struct {
 	SubcategoryIds 		[]int  
 }
 
+type IndexFilter struct {
+	SubcategoryIdsRaw   string `form:"subcategory_ids"`
+	CategoryIdsRaw      string `form:"category_ids"`
+	SubcategoryIds 		[]int  
+	CategoryIds 		[]int  
+}
+
 type BusinessesReqDTO struct {
 	Name           string         `json:"name"`
 	ProvinceId     int            `json:"province_id"`
@@ -62,6 +69,18 @@ type BusinessForUpdateDTO struct {
 	OpensTime      string
 	ClosesTime     string
 	Expires        int
+}
+
+type Index struct {
+	NewCreated []IndexBusinesses `json:"new_created"`
+	WithDiscounts []IndexBusinesses `json:"with_discounts"`
+}
+
+type IndexBusinesses struct {
+	Id   int             `json:"id"`
+	Name string          `json:"name"`
+	Image string         `json:"image"`
+	DiscountPercent *int `json:"discount_percent"`
 }
 
 type ConnectTypes struct {

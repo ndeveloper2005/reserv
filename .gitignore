@@ -23,3 +23,5 @@ TestResults.xml
 internal/config/serviceAccountKey.json
 #logs
 *.logs/all.log
+#upload
+*.uploads

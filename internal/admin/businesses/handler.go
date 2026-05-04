@@ -27,6 +27,7 @@ const (
 	businessesById         = "/:id"
 	businessesConnect      = "/connectType/:id"
 	businessesStatusById   = "/status/:id"
+	businessesIndex        = "/index"
 )
 
 type handler struct {
@@ -67,6 +68,7 @@ func (h *handler) Register(router *gin.RouterGroup) {
 	router.DELETE(businessesById, h.delete)
 	router.PUT(businessesConnect, h.connectType)
 	router.PATCH(businessesStatusById, h.updateSatus)
+	router.GET(businessesIndex, h.index)
 }
 
 func (h *handler) create(c *gin.Context) {
@@ -378,6 +380,28 @@ func (h *handler) connectType(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *handler) index(c *gin.Context) {
+	var filter IndexFilter
+	_ = c.ShouldBindQuery(&filter)
+
+	if filter.SubcategoryIdsRaw != "" {
+		filter.SubcategoryIds = parseIntArray(filter.SubcategoryIdsRaw)
+	}
+
+	if filter.CategoryIdsRaw != "" {
+		filter.CategoryIds = parseIntArray(filter.CategoryIdsRaw)
+	}
+
+	baseURL := c.MustGet("baseURL").(string)
+	resp, err := h.repository.Index(context.TODO(), filter, baseURL)
+	if err != nil {
+		appresult.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *handler) extractUserIdAndRole(c *gin.Context, businessId *int) (*string, error) {

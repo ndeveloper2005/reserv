@@ -202,7 +202,7 @@ func (r *repository) GetOne(ctx context.Context, businessId int, baseURL string)
 				b.phone,
 				p.id,
 				p_name.tm, p_name.en, p_name.ru,
-				COALESCE(d_dress.tm, ''), COALESCE(d_dress.en, ''), COALESCE(d_dress.ru, ''),
+				COALESCE(d_district.tm, ''), COALESCE(d_district.en, ''), COALESCE(d_district.ru, ''),
 				b.opens_time,
 				b.closes_time,
 				b.expires
@@ -867,3 +867,150 @@ func (r *repository) UpdateStatus(ctx context.Context, businessId int,  status b
 	return nil
 }
 
+func (r *repository) Index(ctx context.Context, filter businesses.IndexFilter, baseURL string) (*businesses.Index, error) {
+	var (
+		index businesses.Index  
+	)
+
+	firstInterestingSubcategoryIds, secondInterestingSubcategoryIds, err := findInterestingSubcategory(ctx, r, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	 q := `
+   		SELECT DISTINCT ON (b.id) b.id, b.name, img.image_path, b.discount_percent
+	FROM businesses b
+	LEFT JOIN businesses_subcategories bs ON bs.businesses_id = b.id
+	LEFT JOIN image_businesses img ON img.businesses_id = b.id AND img.is_main = true
+	WHERE (bs.subcategory_id = ANY($1) OR $1::int[] IS NULL)
+	ORDER BY b.id, b.created_at DESC
+	LIMIT $2
+	`
+	newCreated, err := findBusinessesForIndex(ctx, r, q, firstInterestingSubcategoryIds, 5, baseURL)
+	if err != nil {
+		fmt.Println("1error", err)
+		return nil, err
+	}
+
+	if len(newCreated) < 5 {
+		fallback, err := findBusinessesForIndex(ctx, r, q, secondInterestingSubcategoryIds, 5-len(newCreated), baseURL)
+		if err != nil {
+			return nil, err
+		}
+		newCreated = append(newCreated, fallback...)
+	}
+
+	q = `
+   		SELECT DISTINCT ON (b.id) b.id, b.name, img.image_path, b.discount_percent
+	FROM businesses b
+	LEFT JOIN businesses_subcategories bs ON bs.businesses_id = b.id
+	LEFT JOIN image_businesses img ON img.businesses_id = b.id AND img.is_main = true
+	WHERE (bs.subcategory_id = ANY($1) OR $1::int[] IS NULL)
+	AND b.discount_percent IS NOT NULL
+	ORDER BY b.id, b.created_at DESC
+	LIMIT $2
+	`
+
+	withDiscounts, err := findBusinessesForIndex(ctx, r, q, firstInterestingSubcategoryIds, 5, baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(withDiscounts) < 5 {
+		fallback, err := findBusinessesForIndex(ctx, r, q, secondInterestingSubcategoryIds, 5-len(withDiscounts), baseURL)
+		if err != nil {
+			return nil, err
+		}
+		withDiscounts = append(withDiscounts, fallback...)
+	}
+
+	index.NewCreated = newCreated
+	index.WithDiscounts = withDiscounts
+
+	return &index, nil
+}
+
+func findInterestingSubcategory(ctx context.Context, r *repository, filter businesses.IndexFilter) ([]int, []int, error) {
+	 q := `
+		WITH first AS (
+			SELECT s.id
+			FROM subcategories s
+			JOIN categories c ON c.id = s.category_id
+			WHERE (s.id = ANY($1) OR $1::int[] IS NULL)
+			   OR (c.id = ANY($2) OR $2::int[] IS NULL)
+		),
+		second AS (
+			SELECT s.id
+			FROM subcategories s
+			WHERE (s.category_id = ANY($2) OR $2::int[] IS NULL)
+			  AND s.id NOT IN (SELECT id FROM first)
+		)
+		SELECT id, 1 AS group_num FROM first
+		UNION ALL
+		SELECT id, 2 AS group_num FROM second
+	`
+
+	var subcategoryIds, categoryIds interface{}
+	if len(filter.SubcategoryIds) > 0 {
+		subcategoryIds = filter.SubcategoryIds
+	}
+	if len(filter.CategoryIds) > 0 {
+		categoryIds = filter.CategoryIds
+	}
+
+	rows, err := r.client.Query(ctx, q, subcategoryIds, categoryIds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("interesting subcategory: %w", err)
+	}
+	defer rows.Close()
+
+	var firstIds, secondIds []int
+	for rows.Next() {
+		var id, group int
+		if err := rows.Scan(&id, &group); err != nil {
+			return nil, nil, fmt.Errorf("scan: %w", err)
+		}
+		if group == 1 {
+			firstIds = append(firstIds, id)
+		} else {
+			secondIds = append(secondIds, id)
+		}
+	}
+
+	return firstIds, secondIds, rows.Err()
+}
+
+func findBusinessesForIndex(
+	ctx context.Context, 
+	r *repository, 
+	q string,
+	interestingSubcategoryIds []int,
+	limit int,
+	baseURL string,
+	)([]businesses.IndexBusinesses, error){
+
+	var newCreated []businesses.IndexBusinesses
+
+	rows, err := r.client.Query(ctx, q, interestingSubcategoryIds, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var data businesses.IndexBusinesses
+		if err := rows.Scan(
+			&data.Id, 
+			&data.Name,
+			&data.Image,
+			&data.DiscountPercent,
+			); err != nil {
+			return nil, err
+		}
+		cleanPath := strings.ReplaceAll(data.Image, "\\", "/")
+		data.Image = fmt.Sprintf("%s/%s", baseURL, cleanPath)
+		newCreated = append(newCreated, data)
+	}
+
+	return newCreated, nil
+}
