@@ -22,6 +22,6 @@ rad.json
 TestResults.xml
 internal/config/serviceAccountKey.json
 #logs
-*.logs/all.log
+logs/
 #upload
-*.uploads
+uploads/
